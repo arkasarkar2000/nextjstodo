@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from "react";
+import { useState,useRef } from "react";
 import { usePathname,useRouter} from 'next/navigation';
 
 
@@ -8,6 +8,9 @@ const Page = () => {
     const pathname = usePathname()
     const todoId = pathname.slice(pathname.lastIndexOf('/')+1)
     const router = useRouter()
+
+    const titleInputRef = useRef(null);
+    const textInputRef = useRef(null);
    
 
     const [post, setPost] = useState({
@@ -17,6 +20,7 @@ const Page = () => {
 
     const handleClick = async () => {
         try {
+            
             const apiUrl = `http://localhost:3001/update/${todoId}`;
             const requestOptions = {
                 method: "PUT",
@@ -31,9 +35,15 @@ const Page = () => {
             if (!response.ok) {
                 throw new Error("Network response was not ok");
             }
-
-            alert("Todo Updated");
-            router.push('/')
+            const responseData = await response.json()
+            const userId = responseData.userId
+            titleInputRef.current.value = ""
+            textInputRef.current.value = ""
+            setPost({
+                title:"",
+                text:""
+            })
+            router.back()
         } catch (err) {
             console.error(err);
         }
@@ -47,8 +57,8 @@ const Page = () => {
     return (
         <div className="form">
             <h1>Update todo</h1>
-            <input type="text" placeholder="title" name="title" onChange={handleChange} required />
-            <textarea type="text" placeholder="Enter your todo" name="text" onChange={handleChange} required />
+            <input type="text" placeholder="title" name="title" onChange={handleChange} required value={post.title} ref={titleInputRef}/>
+            <textarea type="text" placeholder="Enter your todo" name="text" onChange={handleChange} required value={post.text} ref={textInputRef} />
             <br />
             <button onClick={handleClick} className="add">
                 UPDATE TODO
