@@ -3,23 +3,28 @@
 import { useEffect, useState, useRef } from "react";
 import "../app/globals.css"
 import Link from "next/link";
-import { useRouter,usePathname } from "next/navigation";
+import { usePathname } from "next/navigation";
 
 const Todos = () => {
-  const router = useRouter()
   const pathname = usePathname()
   const user_id = pathname.slice(pathname.lastIndexOf('/')+1)
   const[token,setToken] = useState("")
   const [todos,setTodos] = useState([])
+  const [selectedStatus, setSelectedStatus] = useState("all")
+
   const [post,setPost] = useState({
         title:"",
         text:""
     })
 
-    const[refetch,setRefetch] = useState(false)
+    const handleFilterClick = (filter)=>{
+      setSelectedStatus(filter)
+    }
 
+    const[refetch,setRefetch] = useState(false)
     const titleInputRef = useRef(null);
     const textInputRef = useRef(null);
+
   useEffect(() => {
       const clientToken = localStorage.getItem('token')
       if(clientToken){
@@ -27,12 +32,12 @@ const Todos = () => {
       }
   }, []); 
 
-        // handling input changes
+  // handling input changes
    const handleChange = (e)=>{
-          const {name,value} = e.target
-          setPost({...post,[name]:value,
-          })
-        }
+      const {name,value} = e.target
+      setPost({...post,[name]:value,
+      })
+  }
 
     //handling click to add todo
     const handleClick = async () => {
@@ -65,6 +70,7 @@ const Todos = () => {
 
     //showing all todos on reload according to user token
     useEffect(()=>{
+
         const getAllTodos = async () => {
             try {
               const apiUrl = `http://localhost:3001/todos/${user_id}`;
@@ -85,7 +91,7 @@ const Todos = () => {
               console.error(err);
             }
           };
-        getAllTodos();
+          getAllTodos()
         setRefetch(false)
     },[token,user_id,refetch])
 
@@ -128,7 +134,58 @@ const Todos = () => {
           }
         });
       };
-      
+
+      const handleStatusChange = async (todoId,selectedStatus)=>{
+          const apiUrl = `http://localhost:3001/updateStatus/${todoId}`
+          const requestOptions = {
+            method: "PUT",
+            headers:{
+              "Content-Type": "application/json",
+              Authorization: `Bearer ${token}`
+            },
+            body: JSON.stringify({status: selectedStatus})
+          }
+          try{
+            const response = await fetch(apiUrl,requestOptions)
+            if(!response.ok){
+              console.log("Error")
+            }
+            getAllTodos()
+          }catch(err){
+            console.log(err)
+          }
+
+
+
+      }
+
+  /*     const updateCheckboxState = (itemId,checked)=>{
+        const updatedTodos = todos.map((item)=>{
+          if(item.id === itemId){
+            return {...item, completed1:checked}
+          }
+          return item
+        })
+
+        setTodos(updatedTodos)
+        localStorage.setItem("todos",JSON.stringify(updatedTodos))
+      } */
+
+      /* const change = ()=>{
+        setChecked(!checked)
+        localStorage.setItem("checked",checked)
+      } */
+
+      const filteredTodos = todos.filter((item)=>{
+          if(selectedStatus === "completed" && item.is_completed){
+            return true
+          }else if(selectedStatus === "not_completed" && !item.is_completed){
+            return true
+          }else if(selectedStatus === "all"){
+            return true
+          }
+          return false
+        })
 
     return (
         <>
@@ -138,24 +195,25 @@ const Todos = () => {
             <textarea type="text" placeholder="Enter your todo" name="text" onChange={handleChange} required value={post.text} ref={textInputRef}></textarea><br></br>
             <button onClick={handleClick} className="add">ADD TODO</button>
         </div>
-
         <div className="search-container">
-        <input type="search" placeholder="Search todos" onChange={searchTodo} id="search" />
-
+          <input type="search" placeholder="Search todos" onChange={searchTodo} id="search" />
         </div>
-    
+
         <div className="todo-container">
-            {todos ? todos.map(item=>(
-            <>
+            {filteredTodos.length > 0 ? filteredTodos.map(item=>(
                 <div className="card" key={item.id}>
                     <h2 className="title" id="todo-title">{item.title}</h2>
+                    <h6>{item.updated_date}</h6>
+                    <select name="status" id="status" className="status" onChange={(e)=> handleStatusChange(item.id,e.target.value)} value={item.is_completed? "completed":"not_completed"}>
+                      <option value="not_completed">Not Completed</option>
+                      <option value="completed">Completed</option>
+                    </select><br></br>
                     <button className="update"><Link href = {`/update/${item.id}`}>Update</Link></button>
-                    <button onClick={()=> handleDelete(item.id)} className="delete"> Delete </button>
+                    <button onClick={()=> handleDelete(item.id)} className="delete"> Delete </button><br></br>
                     <p className="desc" id="todo-desc">{item.text}</p>
                 </div>
-            </>
             )
-            ):<h2>No todos</h2>}
+            ):<h2 className="notodo">No todos</h2>}
             
         </div>
         </>

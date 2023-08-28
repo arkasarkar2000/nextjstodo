@@ -27,13 +27,12 @@ app.get('/',(req,res)=>{
 //fetching all todos
 app.get('/todos/:user_id', (req,res)=>{
   const user_id = req.params.user_id
-    const query = "SELECT * FROM todos WHERE user_id = ?"
+    const query = "SELECT id,title,text,is_completed,updated_date FROM todos WHERE user_id = ?"
     db.query(query,[user_id], (err,data)=>{
         if(err) return res.json(err)
         return res.send(data)
     })
 })
-
 
 //posting todos
 app.post('/create/:user_id', (req,res)=>{
@@ -81,14 +80,10 @@ app.put('/update/:id',(req,res)=>{
     })
 })
 
-
-const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-const passwordRegex = /^(?=.*[A-Za-z])(?=.*\d)[A-Za-z\d]{8,}$/;
-
 //posting user signup details
 app.post("/signupuser", (req, res) => {
     const { name, email, password } = req.body;
-    if (!name || !email || !password || !emailRegex.test(email) || !passwordRegex.test(password)) {
+    if (!name || !email || !password) {
       return res.status(400).send({ message: "Please fill all the fields" });
     }
   
@@ -177,6 +172,20 @@ app.post("/logout", (req,res)=>{
 
 })
 
+
+app.put('/updateStatus/:id',(req,res)=>{
+  const todoId = req.params.id
+  const {status} = req.body
+
+  const query = "UPDATE todos SET `is_completed` = ? WHERE id = ?"
+  const values = [status === 'completed' ? 1 : 0, todoId]
+
+  db.query(query,values,(err,data)=>{
+    if(err) throw console.log(err)
+    return res.json({mssg: "Status changed"})
+  })
+})
+
 //function to check if the email entered exists or not
 function checkEmailExists(email) {
     return new Promise((resolve, reject) => {
@@ -194,18 +203,11 @@ function checkEmailExists(email) {
       });
     });
   }
-  
-
-
-
-
 
 app.listen(PORT, (err)=>{
     if(err) console.log("Error")
     console.log("Server running on port " + PORT)
 })
-
-
 
 var db = mysql.createConnection({
     host: "localhost",
