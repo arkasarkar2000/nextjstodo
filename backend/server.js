@@ -18,9 +18,6 @@ function generateSecretKey(){
 
 const secretKeys = {}
 
-/* user_id INT NOT NULL,
-FOREIGN KEY (user_id) REFERENCES users(id) * IMPORTANT*/
-
 app.get('/',(req,res)=>{
     res.json({title:"HELLO"})
 })
@@ -121,7 +118,6 @@ app.post("/signupuser", (req, res) => {
       });
 });
 
-
 //login user
 app.post("/loginuser", (req, res) => {
     const { email, password } = req.body;
@@ -150,7 +146,7 @@ app.post("/loginuser", (req, res) => {
                   httpOnly: true,
                   maxAge: 36000000,
                 });
-                return res.status(200).json({userId:user.id, message: "Login successful" ,token});
+                return res.status(200).json({userId:user.id, userName:user.name ,message: "Login successful" ,token});
         
             } else {
               return res.status(401).send({ message: "Incorrect password" });
@@ -172,17 +168,19 @@ app.post("/logout", (req,res)=>{
 
 })
 
-
-app.put('/updateStatus/:id',(req,res)=>{
+//updating status of todos in todo field
+app.put("/todos/:id", (req,res)=>{
   const todoId = req.params.id
-  const {status} = req.body
-
+  const {is_completed } = req.body
+  
   const query = "UPDATE todos SET `is_completed` = ? WHERE id = ?"
-  const values = [status === 'completed' ? 1 : 0, todoId]
+  const values = [is_completed,todoId]
 
   db.query(query,values,(err,data)=>{
-    if(err) throw console.log(err)
-    return res.json({mssg: "Status changed"})
+    if(err){
+      return res.json(err)
+    }
+    return res.json({mssg:"Status updated successfully"})
   })
 })
 
@@ -221,9 +219,4 @@ db.connect(function(err) {
     console.log("Connected to MySQL DB!");
 });
   
-
-
-
-
-
 module.exports = db

@@ -55,11 +55,11 @@ const Page = () => {
     };
 
     return (
-        <div className="form">
+        <div className="form-update">
             <h1>Update todo</h1>
-            <input type="text" placeholder="title" name="title" onChange={handleChange} required value={post.title} ref={titleInputRef}/>
+            <input type="text" placeholder="title" name="title" onChange={handleChange} required value={post.title} ref={titleInputRef}/><br></br>
             <textarea type="text" placeholder="Enter your todo" name="text" onChange={handleChange} required value={post.text} ref={textInputRef} />
-            <br />
+            <br/>
             <button onClick={handleClick} className="add">
                 UPDATE TODO
             </button>

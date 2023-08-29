@@ -3,23 +3,25 @@
 import { useEffect, useState, useRef } from "react";
 import "../app/globals.css"
 import Link from "next/link";
+import Navbar from "@/components/Navbar";
 import { usePathname } from "next/navigation";
+
 
 const Todos = () => {
   const pathname = usePathname()
   const user_id = pathname.slice(pathname.lastIndexOf('/')+1)
+  const [showTodo,setShowTodo] = useState(false)
   const[token,setToken] = useState("")
   const [todos,setTodos] = useState([])
-  const [selectedStatus, setSelectedStatus] = useState("all")
-
   const [post,setPost] = useState({
         title:"",
         text:""
     })
+  const[userName,setUserName] = useState("")
 
-    const handleFilterClick = (filter)=>{
-      setSelectedStatus(filter)
-    }
+  const [filterStatus,setFilterStatus] = useState("all")
+  const [filteredTodos,setFilteredTodos] = useState([])
+
 
     const[refetch,setRefetch] = useState(false)
     const titleInputRef = useRef(null);
@@ -27,8 +29,10 @@ const Todos = () => {
 
   useEffect(() => {
       const clientToken = localStorage.getItem('token')
-      if(clientToken){
+      const clientName = localStorage.getItem("userName")
+      if(clientToken && clientName){
         setToken(clientToken)
+        setUserName(clientName)
       }
   }, []); 
 
@@ -70,7 +74,6 @@ const Todos = () => {
 
     //showing all todos on reload according to user token
     useEffect(()=>{
-
         const getAllTodos = async () => {
             try {
               const apiUrl = `http://localhost:3001/todos/${user_id}`;
@@ -95,6 +98,7 @@ const Todos = () => {
         setRefetch(false)
     },[token,user_id,refetch])
 
+    
     //deleting from todo list
     const handleDelete = async (id) => {
         try {
@@ -114,6 +118,7 @@ const Todos = () => {
         }
       };
 
+      //search feature for our todo
       const searchTodo = () => {
         const searchbox = document.getElementById("search").value.toLowerCase();
         const items = document.querySelectorAll(".card");
@@ -135,86 +140,134 @@ const Todos = () => {
         });
       };
 
-      const handleStatusChange = async (todoId,selectedStatus)=>{
-          const apiUrl = `http://localhost:3001/updateStatus/${todoId}`
-          const requestOptions = {
-            method: "PUT",
-            headers:{
-              "Content-Type": "application/json",
-              Authorization: `Bearer ${token}`
-            },
-            body: JSON.stringify({status: selectedStatus})
+
+      //updating the status of our todos 
+      const handleStatusChange = async (id,status)=>{
+        const apiUrl = `http://localhost:3001/todos/${id}`
+        const requestOptions = {
+          method: "PUT",
+          headers:{
+            "Content-Type":"application/json",
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify({is_completed: status === "completed"})
+        }
+        try{
+          const response = await fetch (apiUrl,requestOptions)
+          if(!response.ok){
+            return response.json({mssg:"Error"}).status(400)
           }
-          try{
-            const response = await fetch(apiUrl,requestOptions)
-            if(!response.ok){
-              console.log("Error")
+
+          const updatedTodos = todos.map((item)=>{
+            if(item.id===id){
+              return {...item, is_completed: status==="completed"}
             }
-            getAllTodos()
-          }catch(err){
-            console.log(err)
-          }
+            return item
+          })
+          setTodos(updatedTodos)
+          return response.json({mssg:"success"}).status(500)
+        }catch(err){
+          console.log(err)
+        }
+      }
+      const handleCopy = ()=>{
+        let copiedText = document.getElementById("copytext")
 
-
+        copiedText.select()
+        document.execCommand("copy")
 
       }
 
-  /*     const updateCheckboxState = (itemId,checked)=>{
-        const updatedTodos = todos.map((item)=>{
-          if(item.id === itemId){
-            return {...item, completed1:checked}
-          }
-          return item
-        })
+      
+      const handleSecondCopy = (id)=>{
+        let copiedText1 = document.getElementById(`todo-desc-${id}`)
+        copiedText1.select()
+        document.execCommand("copy")
+      }
 
-        setTodos(updatedTodos)
-        localStorage.setItem("todos",JSON.stringify(updatedTodos))
-      } */
-
-      /* const change = ()=>{
-        setChecked(!checked)
-        localStorage.setItem("checked",checked)
-      } */
-
-      const filteredTodos = todos.filter((item)=>{
-          if(selectedStatus === "completed" && item.is_completed){
-            return true
-          }else if(selectedStatus === "not_completed" && !item.is_completed){
-            return true
-          }else if(selectedStatus === "all"){
-            return true
-          }
-          return false
-        })
+      const handleFilter = (status)=>{
+        setFilterStatus(status)
+        if(status === "completed"){
+          const completedTodos = todos.filter((item)=> item.is_completed)
+          setFilteredTodos(completedTodos)
+          const button = document.querySelector(".btn1")
+          const button2 = document.querySelector(".btn2")
+          const button3 = document.querySelector(".btn3")
+          button.classList.add ("active")
+          button2.classList.remove("active")
+          button3.classList.remove("active")
+        }
+        else if(status === "not_completed"){
+          const notCompletedTodos = todos.filter((item)=> !item.is_completed)
+          setFilteredTodos(notCompletedTodos)
+          const button = document.querySelector(".btn1")
+          const button2 = document.querySelector(".btn2")
+          const button3 = document.querySelector(".btn3")
+          button.classList.remove("active")
+          button2.classList.add("active")
+          button3.classList.remove("active")
+        }else{
+          setFilteredTodos([])
+          const button = document.querySelector(".btn1")
+          const button2 = document.querySelector(".btn2")
+          const button3 = document.querySelector(".btn3")
+          button.classList.remove("active")
+          button2.classList.remove("active")
+          button3.classList.add("active")
+        }
+      }
 
     return (
         <>
-        <div className="form">
+           <Navbar userName={userName} searchTodo={searchTodo}/>
+
+        <button onClick={()=> {console.log("Clicked"); setShowTodo(!showTodo)}} className={!showTodo? "button-9" : "remove-btn"}> Add a todo</button>
+        {showTodo && (
+          <div className="popup">
             <h1>Add new todos</h1>
-            <input type="text" placeholder="title" name="title" onChange={handleChange} required value={post.title} ref={titleInputRef}></input>
-            <textarea type="text" placeholder="Enter your todo" name="text" onChange={handleChange} required value={post.text} ref={textInputRef}></textarea><br></br>
+            <input type="text" placeholder="title" name="title" onChange={handleChange} required value={post.title} ref={titleInputRef} ></input><br></br>
+            <textarea type="text" placeholder="Enter your todo" name="text" onChange={handleChange} required value={post.text} ref={textInputRef} id="copytext"></textarea><br></br>
             <button onClick={handleClick} className="add">ADD TODO</button>
-        </div>
-        <div className="search-container">
-          <input type="search" placeholder="Search todos" onChange={searchTodo} id="search" />
-        </div>
+            <button onClick={handleCopy} className="add">Copy </button>
+            <button onClick={()=> setShowTodo(false)} className="close-btn">❌</button>
+          </div>
+        )}
+      <div className="filter-buttons">
+        <button onClick={()=> handleFilter("completed")} className="filter-button btn1">Completed</button>
+        <button onClick={()=> handleFilter("not_completed")} className="filter-button btn2">Not Completed</button>
+        <button onClick={()=> handleFilter("all")} className="filter-button btn3 active">All</button>
+      </div>
 
         <div className="todo-container">
-            {filteredTodos.length > 0 ? filteredTodos.map(item=>(
-                <div className="card" key={item.id}>
-                    <h2 className="title" id="todo-title">{item.title}</h2>
-                    <h6>{item.updated_date}</h6>
-                    <select name="status" id="status" className="status" onChange={(e)=> handleStatusChange(item.id,e.target.value)} value={item.is_completed? "completed":"not_completed"}>
-                      <option value="not_completed">Not Completed</option>
-                      <option value="completed">Completed</option>
+            {filterStatus === "all" ? todos.map(item=>(
+                <div className="card" key={item.id} data-id={item.id}>
+                    <h2 className={`title ${item.is_completed ? "completed":"not_completed"}`} id="todo-title">{item.title}</h2>
+                    <h5>Created on: {item.updated_date.split('T')[0]}</h5>
+                    <select name="status" className="status" value={item.is_completed ? "completed": "not_completed"} onChange={(e)=> handleStatusChange(item.id, e.target.value)}>
+                      <option value="completed" className="comp">Completed</option>
+                      <option value="not_completed" className="notcomp">Not Completed</option>
                     </select><br></br>
-                    <button className="update"><Link href = {`/update/${item.id}`}>Update</Link></button>
-                    <button onClick={()=> handleDelete(item.id)} className="delete"> Delete </button><br></br>
-                    <p className="desc" id="todo-desc">{item.text}</p>
+                    <Link href = {`/update/${item.id}`}> <button className="update">✏️</button></Link>
+                    <button onClick={()=>{console.log("Clicked"); handleDelete(item.id)}} className="delete"> 🗑️ </button>
+                    <button onClick={()=>handleSecondCopy(item.id)} className="add copy" >📑</button>
+                    <textarea className={`desc ${item.is_completed? "completed":"not_completed"}`} id={`todo-desc-${item.id}`} readOnly>{item.text}</textarea>
                 </div>
             )
-            ):<h2 className="notodo">No todos</h2>}
-            
+            ):filteredTodos.map((item)=>(
+              <div className="card" key={item.id} data-id={item.id}>
+              <h2 className={`title ${item.is_completed ? "completed":"not_completed"}`} id="todo-title">{item.title}</h2>
+              <h5>Created on: {item.updated_date.split('T')[0]}</h5>
+              <select name="status" className="status" value={item.is_completed ? "completed": "not_completed"} onChange={(e)=> handleStatusChange(item.id, e.target.value)}>
+                <option value="completed" className="comp">Completed</option>
+                <option value="not_completed" className="notcomp">Not Completed</option>
+              </select><br></br>
+              <Link href = {`/update/${item.id}`}> <button className="update">✏️</button></Link>
+              <button onClick={()=>{console.log("Clicked"); handleDelete(item.id)}} className="delete"> 🗑️ </button>
+              <button onClick={()=>handleSecondCopy(item.id)} className="add copy" >📑</button>
+              <textarea className={`desc ${item.is_completed? "completed":"not_completed"}`} id={`todo-desc-${item.id}`} readOnly>{item.text}</textarea>
+          </div>   
+            ))
+            }
         </div>
         </>
     );
